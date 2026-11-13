@@ -1,7 +1,7 @@
 # 📡 PulseUganda: Mobile Network Quality Intelligence Platform
 ### *An SRE-Hardened $0 Lakehouse & Independent Telecommunications Regulatory Intelligence Service*
 
-[![DataOps CI/CD](https://github.com/telecom-intelligence/pulse-uganda/actions/workflows/dataops.yml/badge.svg)](.github/workflows/dataops.yml)
+[![DataOps CI/CD](https://github.com/WalterTwijukye/pulse-uganda/actions/workflows/dataops.yml/badge.svg)](https://github.com/WalterTwijukye/pulse-uganda/actions/workflows/dataops.yml)
 [![Delta Lake](https://img.shields.io/badge/Delta_Lake-ACID_Transactions-00ADD8?logo=apachespark&logoColor=white)](https://delta.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-In--Process_OLAP-FFF000?logo=duckdb&logoColor=black)](https://duckdb.org/)
 [![dbt-Core](https://img.shields.io/badge/dbt--Core-18%2F18_Tests_Passed-FF694B?logo=dbt&logoColor=white)](gold/)
@@ -220,7 +220,7 @@ The pipeline includes a dedicated automated hardening test suite in [tests/test_
 ### 1. Clone & Set Up Environment
 ```powershell
 # Clone repository
-git clone https://github.com/telecom-intelligence/pulse-uganda.git
+git clone https://github.com/WalterTwijukye/pulse-uganda.git
 cd pulse-uganda
 
 # Create and activate virtual environment
