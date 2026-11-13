@@ -1,6 +1,6 @@
 {
   "topic": "cdr-events",
   "partition": 0,
-  "last_committed_offset": 2499,
-  "updated_at": "2026-10-14T07:21:25.830860+00:00"
+  "last_committed_offset": 3499,
+  "updated_at": "2026-11-13T20:38:00.470610+00:00"
 }
