@@ -11,6 +11,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import duckdb
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -20,6 +21,11 @@ if str(PROJECT_ROOT) not in sys.path:
 DUCKDB_PATH = PROJECT_ROOT / "gold" / "gold.duckdb"
 DOCS_DATA_DIR = PROJECT_ROOT / "docs" / "data"
 EXPORT_DIR = PROJECT_ROOT / "data" / "export"
+
+
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(1), reraise=True)
+def _connect_duckdb(db_path: Path):
+    return duckdb.connect(str(db_path), read_only=True)
 
 
 def run_showcase_publisher(db_path: Path = DUCKDB_PATH) -> dict:
@@ -32,7 +38,7 @@ def run_showcase_publisher(db_path: Path = DUCKDB_PATH) -> dict:
     DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    con = duckdb.connect(str(db_path), read_only=True)
+    con = _connect_duckdb(db_path)
     now_utc = datetime.now(timezone.utc).isoformat()
 
     try:

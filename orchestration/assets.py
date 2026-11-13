@@ -369,7 +369,7 @@ def gold_s3_export(context: AssetExecutionContext) -> MaterializeResult:
 
 
 @asset(
-    deps=[gold_dbt_models],
+    deps=[gold_s3_export],
     group_name="gold",
     description="Compiles Gold Lakehouse marts into automated pre-aggregated JSON for the public web showcase and CSV for Tableau.",
 )
