@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CallDetailRecordContract",
+  "description": "Data contract for Source D (Streaming CDR telemetry with CDC flags)",
+  "type": "object",
+  "required": [
+    "call_id",
+    "caller_msisdn",
+    "callee_msisdn",
+    "tower_id",
+    "event_type",
+    "timestamp",
+    "duration_sec",
+    "termination_code",
+    "rsrp_dbm",
+    "rsrq_db",
+    "latency_ms",
+    "op"
+  ],
+  "properties": {
+    "call_id": { "type": "string" },
+    "caller_msisdn": { 
+      "type": "string",
+      "pattern": "^\\+256[0-9]{9}$"
+    },
+    "callee_msisdn": { 
+      "type": "string",
+      "pattern": "^\\+256[0-9]{9}$"
+    },
+    "tower_id": { "type": "integer", "minimum": 1, "maximum": 33051 },
+    "event_type": { 
+      "type": "string",
+      "enum": ["VOICE", "SMS", "DATA"]
+    },
+    "timestamp": { "type": "string" },
+    "duration_sec": { "type": "integer", "minimum": 0, "maximum": 14400 },
+    "termination_code": { 
+      "type": "string",
+      "enum": ["NORMAL", "HANDOVER_DROP", "SIGNAL_LOSS", "CONGESTION_DROP"]
+    },
+    "rsrp_dbm": { "type": "number", "minimum": -140.0, "maximum": -40.0 },
+    "rsrq_db": { "type": "number", "minimum": -25.0, "maximum": 0.0 },
+    "latency_ms": { "type": "integer", "minimum": 1, "maximum": 2000 },
+    "op": { 
+      "type": "string",
+      "enum": ["INSERT", "UPDATE", "DELETE"]
+    }
+  },
+  "additionalProperties": false
+}

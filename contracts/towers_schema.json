@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TowerInventoryContract",
+  "description": "Data contract for Source A (Tower Inventory extracted from OLTP Postgres to Bronze)",
+  "type": "object",
+  "properties": {
+    "tower_id": { "type": "integer" },
+    "radio": { 
+      "type": "string",
+      "enum": ["GSM", "UMTS", "LTE", "NR"]
+    },
+    "mcc": { "type": "integer", "minimum": 100, "maximum": 999 },
+    "net": { "type": "integer", "minimum": 0 },
+    "area": { "type": "integer", "minimum": 0 },
+    "cell": { "type": "integer", "minimum": 0 },
+    "unit": { "type": ["integer", "null"] },
+    "lon": { "type": ["number", "null"] },
+    "lat": { "type": "number", "minimum": -90.0, "maximum": 90.0 },
+    "range": { "type": ["integer", "null"] },
+    "samples": { "type": ["integer", "null"] },
+    "changeable": { "type": ["integer", "null"] },
+    "created": { "type": ["integer", "null"] },
+    "updated": { "type": ["integer", "null"] },
+    "average_signal": { "type": ["integer", "null"] },
+    "ingested_at": { "type": ["string", "null"] }
+  },
+  "required": [
+    "tower_id",
+    "radio",
+    "mcc",
+    "net",
+    "area",
+    "cell",
+    "lat"
+  ],
+  "additionalProperties": false
+}
