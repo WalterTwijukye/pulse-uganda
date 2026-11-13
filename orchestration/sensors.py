@@ -25,8 +25,9 @@ cdr_downstream_job = define_asset_job(
     "cdr_downstream_job",
     selection=AssetSelection.assets("silver_cdrs")
     | AssetSelection.assets("gold_dbt_models")
-    | AssetSelection.assets("gold_s3_export"),
-    description="Processes new incoming CDR batches through Silver CDC merge and Gold marts.",
+    | AssetSelection.assets("gold_s3_export")
+    | AssetSelection.assets("publish_showcase_asset"),
+    description="Processes new incoming CDR batches through Silver CDC merge, Gold marts, and automated showcase publishing.",
 )
 
 

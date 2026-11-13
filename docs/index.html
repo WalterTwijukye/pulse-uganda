@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PulseUganda | Mobile Network Quality Intelligence Lakehouse</title>
+  
+  <!-- SEO & Social Metadata -->
+  <meta name="description" content="An SRE-hardened $0 Lakehouse data platform evaluating cellular Quality of Service (QoS) compliance across Uganda against UCC standards using Delta Lake, DuckDB, and Dagster.">
+  <meta name="keywords" content="Uganda telecom data engineering, Delta Lake CDC Lakehouse, UCC QoS compliance, DuckDB Star Schema, OpenCellID Uganda, Dagster data platform, Walter Twijukye">
+  <meta name="author" content="Walter Twijukye">
+  <meta property="og:title" content="PulseUganda | Telecom QoS Intelligence Lakehouse">
+  <meta property="og:description" content="Independent Regulatory & Operator Intelligence Service evaluating QoS compliance across Uganda against UCC regulatory standards.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://waltertwijukye.github.io/pulse-uganda/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PulseUganda | Telecom QoS Intelligence Lakehouse">
+  <meta name="twitter:description" content="An SRE-hardened $0 Lakehouse analyzing 33,051 cellular masts across Uganda.">
+
+  <!-- Schema.org Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "PulseUganda Mobile Network Quality Intelligence Platform",
+    "programmingLanguage": "Python, SQL",
+    "author": {
+      "@type": "Person",
+      "name": "Walter Twijukye"
+    },
+    "description": "Production-grade $0 local Lakehouse evaluating telecommunication QoS compliance against Uganda Communications Commission standards.",
+    "codeRepository": "https://github.com/WalterTwijukye/pulse-uganda"
+  }
+  </script>
+
+  <!-- Leaflet & Chart.js CDNs -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: #111827;
+      --bg-card-hover: #1f2937;
+      --border-color: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-indigo: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Header Nav */
+    header {
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 1rem 2rem;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background-color: var(--accent-emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-cyan);
+    }
+
+    .btn-github {
+      background: #1e293b;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-github:hover {
+      background: #334155;
+      border-color: var(--accent-cyan);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 4rem 2rem 2rem 2rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tech-pill {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent-indigo);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      letter-spacing: -1px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 860px;
+      margin-bottom: 2.5rem;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 0.25rem;
+    }
+
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Live Map Section */
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      max-width: 750px;
+    }
+
+    .map-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 3rem;
+    }
+
+    .map-toolbar {
+      padding: 1rem 1.5rem;
+      background: #0d131f;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .map-filters {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .filter-btn {
+      background: #1a2234;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+    }
+
+    #uganda-map {
+      height: 520px;
+      width: 100%;
+      background: #0a0e17;
+    }
+
+    /* Analytics Charts Section */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .chart-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .chart-card p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 280px;
+      width: 100%;
+    }
+
+    /* Tableau & BI Callout */
+    .bi-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .bi-content h3 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .bi-content p {
+      color: var(--text-muted);
+      max-width: 650px;
+      font-size: 0.95rem;
+    }
+
+    .btn-tableau {
+      background: #e97627;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .btn-tableau:hover {
+      background: #cf6217;
+    }
+
+    /* Technical Whitepaper Section */
+    .whitepaper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .whitepaper h2 {
+      font-size: 1.85rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.5px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .whitepaper h3 {
+      font-size: 1.3rem;
+      margin: 1.75rem 0 0.75rem 0;
+      color: var(--accent-cyan);
+    }
+
+    .whitepaper p, .whitepaper li {
+      color: #d1d5db;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .whitepaper ul {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .callout-box {
+      background: #0f172a;
+      border-left: 4px solid var(--accent-amber);
+      padding: 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout-box strong {
+      color: var(--accent-amber);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 2.2rem; }
+      .hero { padding: 2rem 1rem; }
+      .map-toolbar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand">
+        <div class="pulse-dot"></div>
+        <span>PulseUganda</span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#live-map">District Map</a>
+        <a href="#analytics">QoS Analytics</a>
+        <a href="#whitepaper">Architecture</a>
+        <a href="https://github.com/WalterTwijukye/pulse-uganda" target="_blank" class="btn-github">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub Code
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="hero" id="overview">
+    <!-- Live Status Badges -->
+    <div class="badge-bar">
+      <span class="status-badge">
+        <span class="pulse-dot" style="width:6px;height:6px;"></span>
+        LAKEHOUSE VERIFIED: GREEN
+      </span>
+      <span class="tech-pill">Delta-RS ACID v3</span>
+      <span class="tech-pill">DuckDB v2.0 Star Schema</span>
+      <span class="tech-pill">18/18 dbt Data Tests PASS</span>
+      <span class="tech-pill" style="color:var(--accent-amber);border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.1);">Monthly Cloud Bill: $0.00</span>
+    </div>
+
+    <h1>Uganda Mobile Network Quality <span>Intelligence Mart</span></h1>
+    <p class="hero-lead">
+      An SRE-hardened Lakehouse evaluating cellular Quality of Service (QoS) across 135 Ugandan districts. 
+      Built to independently benchmark mobile operator performance against the <strong>Uganda Communications Commission (UCC)</strong> 
+      standard (< 2.0% Call Drop Rate), correlating microwave backhaul rain fade attenuation against real OpenCellID masts.
+    </p>
+
+    <!-- Executive KPI Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Cellular Masts Active</div>
+        <div class="kpi-value" id="kpi-towers" style="color:var(--accent-cyan);">32,655</div>
+        <div class="kpi-sub">OpenCellID Uganda (MCC 641)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">CDRs Evaluated</div>
+        <div class="kpi-value" id="kpi-calls" style="color:var(--accent-indigo);">2,330</div>
+        <div class="kpi-sub">Streaming CDC (94% Ins / 5% Upd / 1% Del)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">National Drop Call Rate</div>
+        <div class="kpi-value" id="kpi-drop-rate" style="color:var(--accent-rose);">11.59%</div>
+        <div class="kpi-sub">Target: < 2.0% UCC QoS Standard</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">UCC SLA Compliance</div>
+        <div class="kpi-value" id="kpi-compliance" style="color:var(--accent-amber);">55.3%</div>
+        <div class="kpi-sub">131 of 237 District-Operator Slices</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Rain Fade Risk Events</div>
+        <div class="kpi-value" id="kpi-rain-events" style="color:var(--accent-emerald);">150</div>
+        <div class="kpi-sub">Hydrometeor Attenuation Correlated</div>
+      </div>
+    </div>
+
+    <!-- Live Map Section -->
+    <div id="live-map">
+      <h2 class="section-title">National QoS Spatial Compliance Map</h2>
+      <p class="section-desc">
+        District-level aggregation of cellular network health. Circle size reflects call telemetry density; 
+        color indicates whether the district meets the UCC Call Drop Rate threshold (<span style="color:var(--accent-emerald);font-weight:600;">Green: Compliant</span> | <span style="color:var(--accent-rose);font-weight:600;">Red: SLA Breach</span>).
+      </p>
+
+      <div class="map-container">
+        <div class="map-toolbar">
+          <div style="font-size:0.85rem;color:var(--text-muted);">
+            <strong style="color:#fff;">Centroid STRtree Join:</strong> 125 Administrative Districts Matched (396 Border Masts Quarantined)
+          </div>
+          <div class="map-filters">
+            <button class="filter-btn active" onclick="filterMap('ALL')">All Uganda</button>
+            <button class="filter-btn" onclick="filterMap('Central')">Central</button>
+            <button class="filter-btn" onclick="filterMap('Eastern')">Eastern</button>
+            <button class="filter-btn" onclick="filterMap('Northern')">Northern</button>
+            <button class="filter-btn" onclick="filterMap('Western')">Western</button>
+            <button class="filter-btn" onclick="filterMap('BREACH_ONLY')" style="border-color:rgba(244,63,94,0.4);color:var(--accent-rose);">Breaches Only</button>
+          </div>
+        </div>
+        <div id="uganda-map"></div>
+      </div>
+    </div>
+
+    <!-- Analytics Charts Section -->
+    <div id="analytics">
+      <h2 class="section-title">Telecom Observability & Physics Analysis</h2>
+      <p class="section-desc">
+        Pre-aggregated analytical marts materialized in DuckDB from the Silver Delta Lakehouse tables.
+      </p>
+
+      <div class="charts-grid">
+        <!-- Chart 1 -->
+        <div class="chart-card">
+          <h3>Operator QoS Drop Rate vs UCC SLA</h3>
+          <p>Evaluation against the Uganda Communications Commission 2.0% threshold.</p>
+          <div class="chart-wrapper">
+            <canvas id="operatorChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2 -->
+        <div class="chart-card">
+          <h3>Microwave Rain Fade Correlation</h3>
+          <p>Drop call probability during convective thunderstorms (15–23 GHz backhaul).</p>
+          <div class="chart-wrapper">
+            <canvas id="rainFadeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3 -->
+        <div class="chart-card">
+          <h3>Signal Quality (RSRP) Distribution</h3>
+          <p>Reference Signal Received Power across cellular masts in Uganda.</p>
+          <div class="chart-wrapper">
+            <canvas id="signalChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau Public BI Callout -->
+    <div class="bi-banner">
+      <div class="bi-content">
+        <h3>📊 Ad-Hoc Analytics in Tableau Public</h3>
+        <p>
+          Need to slice metrics by arbitrary dates, drill down into specific parishes, or build customized executive reports? 
+          The Gold dimensional mart (<code>agg_network_quality_daily</code>) is pre-formatted for direct integration with enterprise BI suites.
+        </p>
+      </div>
+      <div>
+        <a href="https://public.tableau.com/" target="_blank" class="btn-tableau">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.5 5.5L20 8l-4 4.5 1 6.5-5-3-5 3 1-6.5L4 8l5.5-2.5L12 0z"/></svg>
+          Explore Tableau Workbook
+        </a>
+      </div>
+    </div>
+
+    <!-- Technical Architecture Case Study -->
+    <article class="whitepaper" id="whitepaper">
+      <h2>Engineering Whitepaper: Architecture & Intellectual Honesty</h2>
+
+      <h3>1. Regulatory Framing & UCC Compliance Mandate</h3>
+      <p>
+        Under the <em>Uganda Communications Commission (UCC) Quality of Service Regulations</em>, licensed mobile network operators 
+        (including MTN Uganda, Airtel Uganda, and Uganda Telecom) are legally mandated to maintain a Call Drop Rate (CDR) strictly below 
+        <strong>2.0%</strong> and a Call Setup Success Rate above <strong>95%</strong>. 
+        <strong>PulseUganda</strong> functions as an automated data lakehouse engine engineered to ingest high-velocity telemetry, 
+        geographically match signals to licensed cell sites, and isolate equipment SLA breaches from environmental disruptions.
+      </p>
+
+      <h3>2. Intellectual Honesty & Synthetic CDR Physics</h3>
+      <p>
+        To earn credibility with senior engineering leadership, this platform explicitly details the technical boundaries of its telemetry:
+      </p>
+      <ul>
+        <li>
+          <strong>The Legal Constraint (Uganda Data Protection Act 2019):</strong> Production telecommunications Call Detail Records contain 
+          sensitive Personally Identifiable Information (PII) including subscriber MSISDNs, hardware IMEIs, and cell tower handovers. 
+          Under Ugandan law and international GDPR statutes, raw production CDRs cannot be publicly distributed.
+        </li>
+        <li>
+          <strong>The Engineering Integrity:</strong> Our generator does not produce flat random numbers. It simulates <strong>3GPP and GSMA radio propagation physics</strong>:
+          log-normal signal degradation (RSRP $[-140, -40]\text{ dBm}$), distance-based path loss, Poisson call arrivals, and realistic drop-call 
+          probabilities correlating with WMO atmospheric thunderstorm severity.
+        </li>
+        <li>
+          <strong>Ground Truth Infrastructure:</strong> Uses real crowd-sourced OpenCellID telemetry for Uganda (MCC 641, 33,051 masts) 
+          enriched with boundary polygons from the UN-OCHA / HDX spatial dataset across 5 administrative layers (admin0 to admin4).
+        </li>
+      </ul>
+
+      <div class="callout-box">
+        <strong>⚡ Microwave Rain Fade Physics (15–23 GHz):</strong>
+        In developing markets like Uganda, over 80% of cell sites rely on microwave radio dishes rather than fiber optic backhaul. 
+        Equatorial rainstorms produce raindrops whose physical diameters match microwave wavelengths, causing severe signal scattering and attenuation 
+        (Rain Fade). Ingesting district weather telemetry from Open-Meteo allows the platform to prove whether an SLA breach was caused by 
+        an environmental storm or operator network negligence.
+      </div>
+
+      <h3>3. The $0 Local Production Lakehouse Stack</h3>
+      <p>
+        Adhering to the standard <code>pipeline_blueprint</code>, the platform executes on a commodity laptop for <strong>$0 in monthly compute bills</strong> 
+        while remaining 100% API-compatible with enterprise cloud architectures (AWS / Databricks):
+      </p>
+      <ul>
+        <li><strong>Redpanda (Kafka):</strong> Single C++ binary broker running on 512MB RAM without JVM overhead.</li>
+        <li><strong>RustFS (S3):</strong> High-throughput, Rust-based object store replacing archived MinIO CE.</li>
+        <li><strong>Delta-RS:</strong> Rust-native Delta Lake ACID transaction logs, micro-batch CDC compaction, and Time Travel without Spark.</li>
+        <li><strong>DuckDB + dbt:</strong> In-process vectorized columnar analytics compiling Kimball dimensional models with 18 automated data tests.</li>
+        <li><strong>Dagster:</strong> Declarative Software-Defined Assets and S3 storage sensors replacing fragile Cron timers.</li>
+      </ul>
+    </article>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div style="max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+      <div>
+        <strong>PulseUganda</strong> &bull; Crafted by <a href="https://github.com/WalterTwijukye" target="_blank">Walter Twijukye</a> &bull; Lead Data Engineer
+      </div>
+      <div style="display:flex; gap: 1.5rem;">
+        <a href="https://github.com/WalterTwijukye/pulse-uganda/blob/main/README.md" target="_blank">System Architecture</a>
+        <a href="https://github.com/WalterTwijukye/pulse-uganda/blob/main/RUNBOOK.md" target="_blank">SRE Runbook</a>
+        <a href="https://github.com/WalterTwijukye/pulse-uganda/blob/main/MAINTENANCE_LOG.md" target="_blank">Maintenance Log</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    let map;
+    let markersLayer;
+    let masterData = null;
+
+    // 1. Initialize Map
+    function initMap() {
+      map = L.map('uganda-map').setView([1.3733, 32.2903], 7);
+
+      // Dark Carto Base Layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+    }
+
+    // 2. Render District Circles
+    function renderMapMarkers(districts, filter = 'ALL') {
+      markersLayer.clearLayers();
+
+      districts.forEach(d => {
+        if (filter !== 'ALL' && filter !== 'BREACH_ONLY' && d.region_name !== filter) return;
+        if (filter === 'BREACH_ONLY' && d.meets_ucc_qos_standard) return;
+
+        const isCompliant = d.meets_ucc_qos_standard;
+        const color = isCompliant ? '#10b981' : '#f43f5e';
+        const radius = Math.min(Math.max(d.total_calls * 1.5, 6), 22);
+
+        const circle = L.circleMarker([d.lat, d.lon], {
+          radius: radius,
+          fillColor: color,
+          color: '#ffffff',
+          weight: 1,
+          opacity: 0.8,
+          fillOpacity: 0.7
+        });
+
+        const popupContent = `
+          <div style="font-family:'Plus Jakarta Sans',sans-serif; color:#111; min-width:180px;">
+            <div style="font-weight:800; font-size:1.1rem; margin-bottom:0.25rem;">${d.district_name}</div>
+            <div style="font-size:0.75rem; color:#666; margin-bottom:0.5rem; text-transform:uppercase;">${d.region_name} Region &bull; ${d.tower_count} Masts</div>
+            <hr style="border:0; border-top:1px solid #eee; margin:0.5rem 0;" />
+            <div style="font-size:0.85rem;"><strong>Total Calls:</strong> ${d.total_calls}</div>
+            <div style="font-size:0.85rem;"><strong>Dropped Calls:</strong> ${d.dropped_calls}</div>
+            <div style="font-size:0.85rem;"><strong>Drop Rate:</strong> <span style="color:${color}; font-weight:700;">${d.drop_call_rate_pct}%</span></div>
+            <div style="font-size:0.85rem;"><strong>UCC Target:</strong> <span style="font-weight:600; color:${isCompliant ? '#10b981' : '#f43f5e'};">${isCompliant ? 'PASS (<2%)' : 'SLA BREACH'}</span></div>
+            <div style="font-size:0.85rem;"><strong>Rain Dropped:</strong> ${d.rain_dropped_calls}</div>
+            <div style="font-size:0.85rem;"><strong>Avg Latency:</strong> ${d.avg_latency_ms} ms</div>
+          </div>
+        `;
+
+        circle.bindPopup(popupContent);
+        markersLayer.addLayer(circle);
+      });
+    }
+
+    // 3. Map Filter Handler
+    function filterMap(region) {
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      if (masterData && masterData.districts) {
+        renderMapMarkers(masterData.districts, region);
+      }
+    }
+
+    // 4. Render Analytical Charts
+    function renderCharts(data) {
+      // Chart 1: Operator QoS vs UCC SLA
+      const opNames = data.operators.map(o => o.operator_name);
+      const opDrops = data.operators.map(o => o.drop_rate_pct);
+
+      new Chart(document.getElementById('operatorChart'), {
+        type: 'bar',
+        data: {
+          labels: opNames,
+          datasets: [
+            {
+              label: 'Drop Rate %',
+              data: opDrops,
+              backgroundColor: ['#6366f1', '#06b6d4', '#f59e0b', '#f43f5e', '#8b5cf6'],
+              borderRadius: 6
+            },
+            {
+              type: 'line',
+              label: 'UCC SLA Limit (2.0%)',
+              data: Array(opNames.length).fill(2.0),
+              borderColor: '#f43f5e',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { grid: { color: '#1f293d' }, ticks: { color: '#9ca3af' } },
+            x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+          },
+          plugins: { legend: { labels: { color: '#f3f4f6' } } }
+        }
+      });
+
+      // Chart 2: Microwave Rain Fade Analysis
+      const rainRisk = data.weather_correlation.find(w => w.is_rain_fade_risk === true) || { drop_rate_pct: 10.0, total_calls: 150 };
+      const dryWeather = data.weather_correlation.find(w => w.is_rain_fade_risk === false) || { drop_rate_pct: 11.7, total_calls: 2180 };
+
+      new Chart(document.getElementById('rainFadeChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Rain Fade Risk Calls', 'Dry Weather Calls'],
+          datasets: [{
+            data: [rainRisk.total_calls, dryWeather.total_calls],
+            backgroundColor: ['#06b6d4', '#1f2937'],
+            borderColor: '#111827',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#f3f4f6' } }
+          }
+        }
+      });
+
+      // Chart 3: Signal Quality RSRP Distribution
+      const sigLabels = data.signal_quality.map(s => s.signal_quality);
+      const sigCounts = data.signal_quality.map(s => s.count);
+
+      new Chart(document.getElementById('signalChart'), {
+        type: 'pie',
+        data: {
+          labels: sigLabels,
+          datasets: [{
+            data: sigCounts,
+            backgroundColor: ['#f43f5e', '#10b981', '#06b6d4', '#f59e0b'],
+            borderColor: '#111827',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#f3f4f6' } }
+          }
+        }
+      });
+    }
+
+    // 5. Update KPI Cards Dynamically
+    function updateKPIs(metadata) {
+      if (!metadata || !metadata.kpis) return;
+      const k = metadata.kpis;
+      document.getElementById('kpi-towers').innerText = k.total_towers_monitored.toLocaleString();
+      document.getElementById('kpi-calls').innerText = k.total_calls_ingested.toLocaleString();
+      document.getElementById('kpi-drop-rate').innerText = k.overall_drop_rate_pct + '%';
+      document.getElementById('kpi-compliance').innerText = k.sla_compliance_rate_pct + '%';
+    }
+
+    // 6. Bootstrap Application
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+
+      // Fetch dynamic analytical JSON payload generated by Dagster
+      fetch('data/pulse_uganda_data.json')
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          masterData = data;
+          updateKPIs(data.metadata);
+          renderMapMarkers(data.districts);
+          renderCharts(data);
+        })
+        .catch(err => {
+          console.warn('Live fetch failed (likely local file:// protocol); loading fallback.', err);
+        });
+    });
+  </script>
+</body>
+</html>

@@ -366,3 +366,32 @@ def gold_s3_export(context: AssetExecutionContext) -> MaterializeResult:
             "layer": MetadataValue.text("gold"),
         }
     )
+
+
+@asset(
+    deps=[gold_dbt_models],
+    group_name="gold",
+    description="Compiles Gold Lakehouse marts into automated pre-aggregated JSON for the public web showcase and CSV for Tableau.",
+)
+def publish_showcase_asset(context: AssetExecutionContext) -> MaterializeResult:
+    _ensure_path()
+    from pipeline.publish_showcase import run_showcase_publisher
+    
+    t0 = time.time()
+    context.log.info("Compiling and publishing showcase analytical payload...")
+    payload = run_showcase_publisher()
+    duration = time.time() - t0
+    
+    kpis = payload["metadata"]["kpis"]
+    return MaterializeResult(
+        metadata={
+            "target_json": MetadataValue.text("docs/data/pulse_uganda_data.json"),
+            "target_csv": MetadataValue.text("data/export/agg_network_quality_daily.csv"),
+            "total_calls": MetadataValue.int(kpis["total_calls_ingested"]),
+            "drop_rate_pct": MetadataValue.float(kpis["overall_drop_rate_pct"]),
+            "districts_monitored": MetadataValue.int(kpis["monitored_districts_count"]),
+            "duration_sec": MetadataValue.float(round(duration, 3)),
+            "layer": MetadataValue.text("showcase"),
+        }
+    )
+

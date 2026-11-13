@@ -522,13 +522,98 @@ This document serves as an immutable, cumulative log of all technical decisions,
      * Updated `README.md` workflow badges and clone URLs to `WalterTwijukye/pulse-uganda`, committed (`9c2481f`), merged into `main`, and pushed both branches to GitHub.
 * **Standard Operating Procedure: Multi-Branch Promotion Workflow:**
   * **Rule 1 (`main` Protection):** Never commit directly to `main`. `main` strictly represents deployable, green, production releases.
+
+          # 1. Ensure your local develop is synchronized
+          git checkout develop
+          git pull origin develop
+
+          # 2. Create a clean feature branch (e.g. for Phase 2)
+          git checkout -b feature/public-showcase-hub
+
+          # 3. Work on your files, verify locally, then stage & commit
+          git status
+          git add <specific-files>
+          git commit -m "feat(showcase): add SEO whitepaper hub and Leaflet spatial map"
+
+          # 4. Push your feature branch to GitHub
+          git push -u origin feature/public-showcase-hub
+
+
   * **Rule 2 (`develop` as Integration):** All ongoing work converges on `develop`.
+
+            # Switch to develop and merge your feature branch
+            git checkout develop
+            git merge feature/public-showcase-hub
+
+            # Push develop to GitHub
+            git push origin develop
+
+            # Safely delete the local feature branch
+            git branch -d feature/public-showcase-hub
+
   * **Rule 3 (Feature Branches):** Create short-lived branches (`feature/<feature-name>`) from `develop` for specific changes.
-  * **Rule 4 (Promotion via PR):** Merge `feature` $\rightarrow$ `develop`, then open a Pull Request from `develop` $\rightarrow$ `main` to trigger the automated GitHub Actions CI/CD suite.
+  * **Rule 4 (Promotion via PR):** Merge `feature` $\rightarrow$ `develop`, then open a Pull Request from `develop` $\rightarrow$ `main` to trigger the automated GitHub Actions CI/CD suite.   
+
+              # 1. Switch to main and make sure it is clean
+              git checkout main
+              git pull origin main
+
+              # 2. Merge develop into main
+              git merge develop
+
+              # 3. Push to production main (triggers GitHub Actions CI/CD pipeline)
+              git push origin main
+
+              # 4. Switch back to develop for your next task
+              git checkout develop
+
 * **Verification Results:**
   * `git status` $\rightarrow$ Clean working tree.
   * `git branch -a` $\rightarrow$ `main`, `develop`, `remotes/origin/main`, `remotes/origin/develop`.
   * Dagster Definitions Validation $\rightarrow$ 100% PASS.
   * JSONSchema Data Contracts $\rightarrow$ 100% PASS.
 * **Status:** `COMPLETED` (Phase 1 Portfolio Packaging, SRE Hardening & Remote Git Delivery Complete ✅)
+
+----
+
+### Entry 015 | 2026-11-13 | Phase 2 Execution — Automated Gold Publisher, Dagster SDA Integration, and Public Showcase Web Hub (Option D)
+* **Context & Implementation Rationale:**
+  * Executed **Phase 2 (Public Case Study & Visualization Setup)** combining Option A (Static SEO Web Hub with Leaflet & Chart.js) and Option B (Tableau Public Extract) into a unified **Option D (The Hybrid Executive Showcase)**.
+  * Solved the "Live Data" problem via **Pattern 2 (The Automated Pipeline Publisher)**: instead of relying on fragile manual exports or local server tunnels that die when the laptop sleeps, the pipeline automatically compiles and publishes pre-aggregated analytical payloads directly to `docs/data/pulse_uganda_data.json` upon completion of Gold transformations.
+* **Architecture & Components Built:**
+  1. **Automated Lakehouse Publisher Engine ([pipeline/publish_showcase.py](pipeline/publish_showcase.py)):**
+     * Connects directly to `gold/gold.duckdb`.
+     * Calculates national KPIs: 32,655 monitored cell towers, 2,330 evaluated CDRs, 11.59% national drop rate, 55.3% UCC SLA compliance rate across 237 district-operator slices.
+     * Computes real district centroids (`AVG(lat)`, `AVG(lon)`) from 32,655 clean masts in `dim_towers` across 125 districts.
+     * Rolls up operator QoS benchmarks (MTN Uganda: 1,544 calls, 11.66% drop; Airtel Uganda: 747 calls, 11.24% drop; UTL: 3 calls, 33.33% drop).
+     * Computes microwave rain fade hydrometeor correlation (150 rain-affected calls vs 2,180 dry calls).
+     * Extracts RSRP signal quality distribution (POOR: 1,088, EXCELLENT: 514, GOOD: 368, FAIR: 360).
+     * Compiles pre-aggregated analytical JSON: [`docs/data/pulse_uganda_data.json`](docs/data/pulse_uganda_data.json) (57,294 bytes).
+     * Exports analytics CSV extract for Tableau Public: `data/export/agg_network_quality_daily.csv` (22,456 bytes).
+  2. **Orchestration Control Plane Integration ([orchestration/assets.py](orchestration/assets.py) & [orchestration/sensors.py](orchestration/sensors.py)):**
+     * Created `publish_showcase_asset` as an official Dagster Software-Defined Asset depending on `gold_dbt_models`.
+     * Materializes analytical JSON payload and Tableau CSV automatically whenever dbt models finish compiling.
+     * Integrated `publish_showcase_asset` into `cdr_downstream_job` in `sensors.py` so that incoming streaming micro-batches trigger downstream showcase refreshes automatically.
+     * Verified with `dagster definitions validate -f orchestration/definitions.py`: **100% PASS (0 errors)**.
+  3. **Public Showcase Web Hub ([docs/index.html](docs/index.html)):**
+     * Built responsive semantic HTML5 single-page application hosted via GitHub Pages (`/docs` on `main`).
+     * Embedded Schema.org `SoftwareSourceCode` JSON-LD structured data and OpenGraph cards for LinkedIn/Twitter previews.
+     * **Interactive Uganda Map (Leaflet.js):** Centered on Uganda (`[1.3733, 32.2903]`, zoom 7) with Dark Carto tiles. Renders district circles color-coded by UCC SLA status (Green: $< 2.0\%$ drop rate, Red: SLA breach). Includes interactive popups displaying district name, region, mast count, calls, drop rate, rain-affected drops, and latency. Features regional filter buttons (All Uganda, Central, Eastern, Northern, Western, Breaches Only).
+     * **Interactive QoS Analytics (Chart.js):**
+       * Chart 1: Operator QoS Drop Rate vs UCC 2.0% SLA dashed threshold limit.
+       * Chart 2: Microwave Rain Fade hydrometeor attenuation comparison (Rain Risk vs Dry).
+       * Chart 3: Signal Quality (RSRP) distribution pie chart.
+     * **Tableau Public Integration Banner:** Direct callout and link for enterprise BI stakeholders.
+     * **Engineering Whitepaper Section:** Codified UCC regulatory mandate, intellectual honesty regarding synthetic CDRs (Uganda Data Protection Act 2019 / GDPR), 3GPP radio physics simulation, microwave rain fade mechanics, and $0 commodity hardware Lakehouse architecture.
+* **Verification & Testing Results:**
+  * Python Compilation: `python -m compileall` $\rightarrow$ 100% PASS.
+  * JSONSchema Contracts: All 4 schemas validated $\rightarrow$ 100% PASS.
+  * Dagster Definitions: `dagster definitions validate` $\rightarrow$ 100% PASS.
+  * dbt Parse: `dbt parse --profiles-dir .` $\rightarrow$ 100% PASS.
+* **Git SOP Branch Promotion:**
+  * Authored on `feature/public-showcase-hub`.
+  * Merged into `develop`.
+  * Promoted to `main` and pushed to GitHub remote (`WalterTwijukye/pulse-uganda`).
+* **Status:** `COMPLETED` (Phase 2 Public Showcase & Automated Visualization Layer Complete ✅)
+
 
