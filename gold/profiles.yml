@@ -1,0 +1,16 @@
+telecom_gold:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "gold.duckdb"
+      extensions:
+        - httpfs
+        - delta
+      secrets:
+        - type: s3
+          key_id: "{{ env_var('MINIO_ROOT_USER', 'minioadmin') }}"
+          secret: "{{ env_var('MINIO_ROOT_PASSWORD', 'minioadmin123') }}"
+          endpoint: "localhost:9000"
+          use_ssl: false
+          url_style: "path"

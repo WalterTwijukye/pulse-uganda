@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: dim_towers
+    description: "Cellular base station dimension enriched with Uganda administrative hierarchy and operator branding."
+    columns:
+      - name: tower_id
+        description: "Surrogate primary key of cell tower."
+        data_tests:
+          - unique
+          - not_null
+      - name: radio_generation
+        description: "Radio generation technology."
+        data_tests:
+          - accepted_values:
+              values: ['2G', '3G', '4G', '5G', 'OTHER']
+      - name: district_name
+        description: "Assigned administrative district."
+        data_tests:
+          - not_null
+
+  - name: dim_weather
+    description: "Hourly atmospheric telemetry per Uganda district."
+    columns:
+      - name: weather_key
+        description: "Surrogate key for district and observation hour."
+        data_tests:
+          - unique
+          - not_null
+      - name: district_pcode
+        description: "Uganda district P-code."
+        data_tests:
+          - not_null
+
+  - name: dim_date
+    description: "Calendar date dimension."
+    columns:
+      - name: date_day
+        description: "Date primary key."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: fct_cdr_events
+    description: "Fact table for all Call Detail Records (CDRs) enriched with tower coordinates and weather conditions."
+    columns:
+      - name: call_id
+        description: "Primary key of call event."
+        data_tests:
+          - unique
+          - not_null
+      - name: tower_id
+        description: "Cellular tower serving the call."
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_towers')
+              field: tower_id
+      - name: signal_quality
+        description: "Radio frequency signal quality category."
+        data_tests:
+          - accepted_values:
+              values: ['EXCELLENT', 'GOOD', 'FAIR', 'POOR']
+
+  - name: agg_network_quality_daily
+    description: "Executive telecom QoS regulatory compliance mart aggregated by district, operator, and day."
+    columns:
+      - name: call_date
+        data_tests:
+          - not_null
+      - name: district_name
+        data_tests:
+          - not_null
+      - name: operator_name
+        data_tests:
+          - not_null
+      - name: total_calls
+        data_tests:
+          - not_null
