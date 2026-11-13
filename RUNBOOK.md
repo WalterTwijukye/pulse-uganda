@@ -191,3 +191,73 @@ cd gold
 ..\venv\Scripts\dbt.exe test --profiles-dir .
 cd ..
 ```
+
+---
+
+## 5. DataOps Git Workflow & Branch Promotion Procedures (Push SOP)
+
+Following [`pipeline_blueprint/step_08_orchestration_and_devops.md`](../../pipeline_blueprint/step_08_orchestration_and_devops.md), the repository uses a **2-tier branching model (`main` + `develop`)** with short-lived feature branches:
+
+```
+feature/my-feature ──► [Commit] ──► [PR / Merge] ──► develop ──► [Release PR] ──► main (CI/CD)
+```
+
+### Protocol 001: Daily Development on a Feature Branch
+Always branch off the latest `develop`:
+
+```powershell
+# 1. Ensure develop is up to date
+git checkout develop
+git pull origin develop
+
+# 2. Create your isolated feature branch
+git checkout -b feature/<feature-name>
+
+# 3. Make changes, run local tests, then stage and commit with Conventional Commits
+git status
+git add <specific-files>
+git commit -m "feat(<scope>): descriptive summary of change"
+
+# 4. Push feature branch to GitHub
+git push -u origin feature/<feature-name>
+```
+
+### Protocol 002: Merging Feature into `develop`
+Once verified locally:
+
+```powershell
+# Option A: Via GitHub Web Pull Request (Recommended for CI checks)
+# Open PR from feature/<feature-name> into develop on GitHub.
+
+# Option B: Local Fast-Forward Merge
+git checkout develop
+git merge feature/<feature-name>
+git push origin develop
+
+# Clean up local feature branch
+git branch -d feature/<feature-name>
+```
+
+### Protocol 003: Promoting `develop` to Production `main`
+When a milestone or phase is complete and ready for production release:
+
+```powershell
+# 1. Ensure both branches are synchronized locally
+git checkout develop
+git pull origin develop
+git checkout main
+git pull origin main
+
+# 2. Merge develop into main
+git merge develop
+
+# 3. Push to production main (triggers GitHub Actions CI/CD)
+git push origin main
+
+# 4. Return to develop for daily work
+git checkout develop
+```
+
+> [!IMPORTANT]
+> **Pre-Push Safety Rule:** Never commit secrets (`.env`), database binaries (`*.duckdb`, `*.db`), or large raw datasets (`data/*.geojson`, `data/*.csv`). Always verify `git status` before `git commit`.
+
