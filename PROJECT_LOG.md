@@ -580,31 +580,99 @@ This document serves as an immutable, cumulative log of all technical decisions,
 * **Context & Implementation Rationale:**
   * Executed **Phase 2 (Public Case Study & Visualization Setup)** combining Option A (Static SEO Web Hub with Leaflet & Chart.js) and Option B (Tableau Public Extract) into a unified **Option D (The Hybrid Executive Showcase)**.
   * Solved the "Live Data" problem via **Pattern 2 (The Automated Pipeline Publisher)**: instead of relying on fragile manual exports or local server tunnels that die when the laptop sleeps, the pipeline automatically compiles and publishes pre-aggregated analytical payloads directly to `docs/data/pulse_uganda_data.json` upon completion of Gold transformations.
-* **Architecture & Components Built:**
+* **Detailed Technical Component Specifications:**
   1. **Automated Lakehouse Publisher Engine ([pipeline/publish_showcase.py](pipeline/publish_showcase.py)):**
-     * Connects directly to `gold/gold.duckdb`.
-     * Calculates national KPIs: 32,655 monitored cell towers, 2,330 evaluated CDRs, 11.59% national drop rate, 55.3% UCC SLA compliance rate across 237 district-operator slices.
-     * Computes real district centroids (`AVG(lat)`, `AVG(lon)`) from 32,655 clean masts in `dim_towers` across 125 districts.
-     * Rolls up operator QoS benchmarks (MTN Uganda: 1,544 calls, 11.66% drop; Airtel Uganda: 747 calls, 11.24% drop; UTL: 3 calls, 33.33% drop).
-     * Computes microwave rain fade hydrometeor correlation (150 rain-affected calls vs 2,180 dry calls).
-     * Extracts RSRP signal quality distribution (POOR: 1,088, EXCELLENT: 514, GOOD: 368, FAIR: 360).
-     * Compiles pre-aggregated analytical JSON: [`docs/data/pulse_uganda_data.json`](docs/data/pulse_uganda_data.json) (57,294 bytes).
-     * Exports analytics CSV extract for Tableau Public: `data/export/agg_network_quality_daily.csv` (22,456 bytes).
-  2. **Orchestration Control Plane Integration ([orchestration/assets.py](orchestration/assets.py) & [orchestration/sensors.py](orchestration/sensors.py)):**
-     * Created `publish_showcase_asset` as an official Dagster Software-Defined Asset depending on `gold_dbt_models`.
-     * Materializes analytical JSON payload and Tableau CSV automatically whenever dbt models finish compiling.
-     * Integrated `publish_showcase_asset` into `cdr_downstream_job` in `sensors.py` so that incoming streaming micro-batches trigger downstream showcase refreshes automatically.
-     * Verified with `dagster definitions validate -f orchestration/definitions.py`: **100% PASS (0 errors)**.
+     * **DuckDB Connection & Extraction:** Connects in read-only mode to `gold/gold.duckdb`.
+     * **SQL CTE for District Spatial Aggregation:**
+       ```sql
+       WITH district_centroids AS (
+           SELECT 
+               district_name,
+               ROUND(AVG(lat), 4) AS lat,
+               ROUND(AVG(lon), 4) AS lon,
+               COUNT(*) AS tower_count
+           FROM dim_towers
+           WHERE tower_id != -1
+           GROUP BY district_name
+       ),
+       district_metrics AS (
+           SELECT 
+               district_name,
+               region_name,
+               CAST(SUM(total_calls) AS INTEGER) AS total_calls,
+               CAST(SUM(completed_calls) AS INTEGER) AS completed_calls,
+               CAST(SUM(dropped_calls) AS INTEGER) AS dropped_calls,
+               ROUND(100.0 * SUM(dropped_calls) / NULLIF(SUM(total_calls), 0), 2) AS drop_call_rate_pct,
+               CAST(SUM(rain_affected_calls) AS INTEGER) AS rain_affected_calls,
+               CAST(SUM(rain_dropped_calls) AS INTEGER) AS rain_dropped_calls,
+               CAST(SUM(dry_dropped_calls) AS INTEGER) AS dry_dropped_calls,
+               CAST(SUM(poor_signal_calls) AS INTEGER) AS poor_signal_calls,
+               ROUND(AVG(avg_latency_ms), 1) AS avg_latency_ms,
+               ROUND(AVG(avg_rsrp_dbm), 2) AS avg_rsrp_dbm
+           FROM agg_network_quality_daily
+           GROUP BY district_name, region_name
+       )
+       SELECT 
+           m.*,
+           COALESCE(c.lat, 1.3733) AS lat,
+           COALESCE(c.lon, 32.2903) AS lon,
+           COALESCE(c.tower_count, 0) AS tower_count,
+           CASE WHEN m.drop_call_rate_pct < 2.0 THEN true ELSE false END AS meets_ucc_qos_standard
+       FROM district_metrics m
+       LEFT JOIN district_centroids c ON m.district_name = c.district_name
+       ORDER BY m.total_calls DESC;
+       ```
+     * **Calculated Metrics Summary:**
+       * National KPIs: 32,655 monitored cell towers, 2,330 evaluated CDRs, 11.59% national drop rate, 55.3% UCC SLA compliance rate across 237 district-operator slices.
+       * Operator Rollup: MTN Uganda (1,544 calls, 11.66% drop, 187.9ms latency), Airtel Uganda (747 calls, 11.24% drop, 180.1ms latency), UTL (3 calls, 33.33% drop).
+       * Hydrometeor Attenuation: 150 rain-affected calls vs 2,180 dry calls.
+       * Radio Frequency Distribution: POOR (1,088 - 46.7%), EXCELLENT (514 - 22.1%), GOOD (368 - 15.8%), FAIR (360 - 15.5%).
+     * **Output Artifacts Generated:**
+       * Web JSON Payload: [`docs/data/pulse_uganda_data.json`](docs/data/pulse_uganda_data.json) (57,294 bytes).
+       * Tableau CSV Extract: `data/export/agg_network_quality_daily.csv` (22,456 bytes) via `COPY agg_network_quality_daily TO '...' (HEADER, DELIMITER ',')`.
+  2. **Dagster Orchestration Plane Integration ([orchestration/assets.py](orchestration/assets.py) & [orchestration/sensors.py](orchestration/sensors.py)):**
+     * **Software-Defined Asset (`publish_showcase_asset`):**
+       ```python
+       @asset(
+           deps=[gold_dbt_models],
+           group_name="gold",
+           description="Compiles Gold Lakehouse marts into automated pre-aggregated JSON for the public web showcase and CSV for Tableau.",
+       )
+       def publish_showcase_asset(context: AssetExecutionContext) -> MaterializeResult:
+           _ensure_path()
+           from pipeline.publish_showcase import run_showcase_publisher
+           t0 = time.time()
+           payload = run_showcase_publisher()
+           duration = time.time() - t0
+           kpis = payload["metadata"]["kpis"]
+           return MaterializeResult(
+               metadata={
+                   "target_json": MetadataValue.text("docs/data/pulse_uganda_data.json"),
+                   "target_csv": MetadataValue.text("data/export/agg_network_quality_daily.csv"),
+                   "total_calls": MetadataValue.int(kpis["total_calls_ingested"]),
+                   "drop_rate_pct": MetadataValue.float(kpis["overall_drop_rate_pct"]),
+                   "districts_monitored": MetadataValue.int(kpis["monitored_districts_count"]),
+                   "duration_sec": MetadataValue.float(round(duration, 3)),
+                   "layer": MetadataValue.text("showcase"),
+               }
+           )
+       ```
+     * **Sensor Downstream Pipeline (`cdr_downstream_job`):**
+       Added `publish_showcase_asset` to the target asset selection in `sensors.py`. Incoming streaming CDR micro-batches automatically flow from Bronze landing $\rightarrow$ Silver CDC MERGE $\rightarrow$ Gold dbt Models $\rightarrow$ Parquet Export $\rightarrow$ Showcase Publishing.
   3. **Public Showcase Web Hub ([docs/index.html](docs/index.html)):**
-     * Built responsive semantic HTML5 single-page application hosted via GitHub Pages (`/docs` on `main`).
-     * Embedded Schema.org `SoftwareSourceCode` JSON-LD structured data and OpenGraph cards for LinkedIn/Twitter previews.
-     * **Interactive Uganda Map (Leaflet.js):** Centered on Uganda (`[1.3733, 32.2903]`, zoom 7) with Dark Carto tiles. Renders district circles color-coded by UCC SLA status (Green: $< 2.0\%$ drop rate, Red: SLA breach). Includes interactive popups displaying district name, region, mast count, calls, drop rate, rain-affected drops, and latency. Features regional filter buttons (All Uganda, Central, Eastern, Northern, Western, Breaches Only).
-     * **Interactive QoS Analytics (Chart.js):**
-       * Chart 1: Operator QoS Drop Rate vs UCC 2.0% SLA dashed threshold limit.
-       * Chart 2: Microwave Rain Fade hydrometeor attenuation comparison (Rain Risk vs Dry).
-       * Chart 3: Signal Quality (RSRP) distribution pie chart.
-     * **Tableau Public Integration Banner:** Direct callout and link for enterprise BI stakeholders.
-     * **Engineering Whitepaper Section:** Codified UCC regulatory mandate, intellectual honesty regarding synthetic CDRs (Uganda Data Protection Act 2019 / GDPR), 3GPP radio physics simulation, microwave rain fade mechanics, and $0 commodity hardware Lakehouse architecture.
+     * **SEO & Semantic Architecture:** Semantic HTML5 (`header`, `main`, `article`, `footer`), OpenGraph metadata (`og:title`, `og:description`, `og:image`), Twitter cards, and Schema.org `SoftwareSourceCode` JSON-LD.
+     * **Leaflet Spatial Mapping Engine:**
+       * Carto Dark base layer tiles (`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`).
+       * Centered at `[1.3733, 32.2903]`, zoom level 7.
+       * Dynamic bubble sizing formula: `Math.min(Math.max(d.total_calls * 1.5, 6), 22)`.
+       * Compliance color thresholds: `#10b981` (Green, meets UCC $<2.0\%$ drop rate), `#f43f5e` (Crimson, SLA breach).
+       * Interactive tooltips: district name, region, mast density, call volume, drop rate, rain-affected drops, and latency.
+       * Dynamic client-side filtering: All Uganda, Central, Eastern, Northern, Western, and Breaches Only.
+     * **Chart.js Analytics Suite:**
+       * Chart 1: Operator comparison bar chart with custom dashed overlay line at $y=2.0\%$ for UCC QoS SLA.
+       * Chart 2: Microwave rain fade doughnut chart comparing rain-risk vs dry call volume.
+       * Chart 3: Reference Signal Received Power (RSRP) pie chart.
+     * **Technical Whitepaper Content:** Codified UCC regulatory mandate, intellectual honesty regarding synthetic CDRs (Uganda Data Protection Act 2019 / GDPR), 3GPP radio physics simulation, microwave rain fade mechanics, and $0 commodity hardware Lakehouse architecture.
 * **Verification & Testing Results:**
   * Python Compilation: `python -m compileall` $\rightarrow$ 100% PASS.
   * JSONSchema Contracts: All 4 schemas validated $\rightarrow$ 100% PASS.
