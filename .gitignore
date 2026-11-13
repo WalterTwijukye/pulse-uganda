@@ -1,0 +1,49 @@
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables & secrets
+.env
+*.env
+*.pem
+*.key
+
+# Python bytecode & test caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Columnar & Lakehouse storage
+*.parquet
+*.delta/
+
+# Local embedded databases & caches
+*.db
+*.duckdb
+*.sqlite3
+
+# dbt artifacts
+target/
+dbt_packages/
+gold/target/
+gold/logs/
+gold/.user.yml
+
+# Orchestrator home & logs
+*.log
+.dagster_home/
+.tmp_dagster*
+scratch/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large raw operational data (see data/README.md for lineage and download instructions)
+data/*.csv
+data/uga_admin_boundaries.geojson/*.geojson
+

@@ -1,0 +1,37 @@
+# ==============================================================================
+# Mobile Network Quality Intelligence Platform — Pipeline Dependencies
+# Stack: Postgres + Redpanda + RustFS (S3) + DuckDB/Delta-RS + Dagster + dbt
+# ==============================================================================
+
+# --- 1. Core Ingestion & Storage Connectors (Week 1) ---
+boto3>=1.34.0               # AWS S3 SDK (interacts with RustFS object store)
+psycopg2-binary>=2.9.9      # PostgreSQL database adapter
+python-dotenv>=1.0.0        # Environment variable management (.env)
+structlog>=24.1.0           # Structured JSON logger for production observability
+tenacity>=8.2.0             # Robust retry logic with backoff for network calls
+jsonschema>=4.21.0          # Data contract validation for schemas
+requests>=2.31.0            # HTTP client for Weather REST API ingestion
+pyyaml>=6.0.1               # YAML configuration parser
+
+# --- 2. Streaming, CDC & Data Generators (Week 1) ---
+Faker>=24.0.0               # Realistic synthetic CDR generator
+kafka-python-ng>=2.2.0      # Kafka client for Redpanda streaming events
+
+# --- 3. Silver Layer Transforms & Lakehouse Engine (Week 2) ---
+pyarrow>=15.0.0             # High-performance columnar memory & Parquet I/O
+polars>=0.20.0              # Fast multi-threaded DataFrame engine
+deltalake>=0.17.0           # Delta-RS for ACID transactions, MERGE & Time Travel
+pandera>=0.18.0             # Data validation and quality gates for Silver
+shapely>=2.0.0              # Spatial geometry operations for tower geocoding
+
+# --- 4. Gold Layer & Analytics (Week 3) ---
+duckdb>=0.10.0              # In-process analytical query engine
+dbt-core>=1.7.0             # Analytics engineering framework
+dbt-duckdb>=1.7.0           # dbt adapter for DuckDB Delta tables
+
+# --- 5. Orchestration (Week 3) ---
+dagster>=1.6.0              # Asset-based data orchestrator
+dagster-webserver>=1.6.0    # Web UI console for Dagster
+
+# --- 6. Testing & Quality Assurance (Week 4) ---
+pytest>=8.0.0               # Unit and integration test suite
