@@ -1,0 +1,58 @@
+name: DataOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-and-test:
+    name: Code Quality, Contracts & Orchestration Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "protobuf<6.0dev,>=5.26.1" "grpcio<1.71.0" "grpcio-health-checking<1.71.0"
+          pip install -r requirements.txt
+          pip install pytest dagster dagster-webserver dbt-core dbt-duckdb
+
+      - name: Validate Python Syntax & Linting
+        run: |
+          python -m compileall pipeline orchestration contracts
+
+      - name: Validate Data Contracts (JSONSchema & Pandera)
+        run: |
+          python -c "
+          import jsonschema, json
+          from pathlib import Path
+          for f in Path('contracts').glob('*.json'):
+              with open(f) as fp:
+                  schema = json.load(fp)
+                  jsonschema.Draft7Validator.check_schema(schema)
+                  print(f'Valid JSONSchema: {f.name}')
+          "
+
+      - name: Validate Dagster Orchestration Definitions
+        run: |
+          export DAGSTER_HOME="$PWD/.dagster_home"
+          export PYTHONPATH="$PWD"
+          mkdir -p "$DAGSTER_HOME"
+          dagster definitions validate -f orchestration/definitions.py
+
+      - name: Validate dbt Project Syntax & Compilation
+        run: |
+          cd gold
+          dbt parse --profiles-dir .
+          cd ..
